@@ -8,7 +8,12 @@ import re
 from spacy.lang.en import English
 import en_core_web_sm
 
-contractions_dict = { "ain't": "are not","'s":" is","aren't": "are not","can't": "can not","can't've": "cannot have",
+
+
+
+class Text_Preprocessing:
+    def __init__(self):
+        self.contractions_dict = { "ain't": "are not","'s":" is","aren't": "are not","can't": "can not","can't've": "cannot have",
 "'cause": "because","could've": "could have","couldn't": "could not","couldn't've": "could not have",
 "didn't": "did not","doesn't": "does not","don't": "do not","hadn't": "had not","hadn't've": "had not have",
 "hasn't": "has not","haven't": "have not","he'd": "he would","he'd've": "he would have","he'll": "he will",
@@ -34,74 +39,92 @@ contractions_dict = { "ain't": "are not","'s":" is","aren't": "are not","can't":
 "y'all'd": "you all would","y'all'd've": "you all would have","y'all're": "you all are","y'all've": "you all have",
 "you'd": "you would","you'd've": "you would have","you'll": "you will","you'll've": "you will have",
 "you're": "you are","you've": "you have"}
+		
 
-def text_preprocessing(txt):
-    txt=txt.lower()
-    contractions_re=re.compile('(%s)' % '|'.join(contractions_dict.keys()))
-    def expand_contractions(text,contractions_dict=contractions_dict):
-        def replace(match):
-            return contractions_dict[match.group(0)]
-        return contractions_re.sub(replace, text)
+    def replace(self,match):
+        return self.contractions_dict[match.group(0)]
 
-    txt=expand_contractions(txt )
-    
-    def clean_text(text):
-        text=re.sub('\w*\d\w*','', text)
+
+    def expand_contractions(self,text,contractions_re):
+        
+        return contractions_re.sub(self.replace, text)
+
+
+    def clean_text(self,text):
+        
+        # removes \n
         text=re.sub('\n',' ',text)
+        # removes url in text
         text=re.sub(r"http\S+", "", text)
-        text=re.sub('[^a-z]',' ',text)
         return text
     
+    def remove_stop_words(self,text):
+        nlp = English()
+        
+        
+        #  "nlp" Object is used to create documents with linguistic annotations.
+        my_doc = nlp(txt)
+        
+        # Create list of word tokens
+        token_list = []
+        for token in my_doc:
+            token_list.append(token.text)
+            
+        # Create list of word tokens after removing stopwords
+        filtered_sentence =[] 
+        
+        for word in token_list:
+            lexeme = nlp.vocab[word]
+            if lexeme.is_stop == False:
+                filtered_sentence.append(word)
+        return filtered_sentence
+    
+    
+    def lemmatisation(self,filtered_sentence):
+        nlp = en_core_web_sm.load()
+        
+        doc = nlp(filtered_sentence)
+        
+        lemma_word = [] 
+        for token in doc:
+            lemma_word.append(token.lemma_)
+        return lemma_word
+    
+    
+# Main function 
+    def text_preprocessing(self,txt):
+        txt=txt.lower()
+        
+        
+        #finds all the contrations
+        contractions_re=re.compile('(%s)' % '|'.join(self.contractions_dict.keys()))
+        txt=self.expand_contractions(txt,contractions_re)
+    
+        
+        # cleans urls
+        txt=self.clean_text(txt)
+        txt=re.sub(' +',' ',txt)
+        
+        
+       # removing stop words
+        filtered_list=self.remove_stop_words(txt)
+                
+        filtered_sentence=" ".join(filtered_list) 
+        
+        #lemmatisation
+        lem_list=self.lemmatisation(filtered_sentence)
+        
+        return lem_list 
+       
+    
+        
 
 
-    txt=clean_text(txt)
-    txt=re.sub(' +',' ',txt)
-    
-    
-
-
-# Load English tokenizer, tagger, parser, NER and word vectors
-    nlp = English()
-    
-    text = txt
-    
-    #  "nlp" Object is used to create documents with linguistic annotations.
-    my_doc = nlp(text)
-    
-    # Create list of word tokens
-    token_list = []
-    for token in my_doc:
-        token_list.append(token.text)
-    
-    
-    
-    # Create list of word tokens after removing stopwords
-    filtered_sentence =[] 
-    
-    for word in token_list:
-        lexeme = nlp.vocab[word]
-        if lexeme.is_stop == False:
-            filtered_sentence.append(word) 
-    #print(token_list)
-    #print(filtered_sentence)
-    filtered_sentence=" ".join(filtered_sentence)   
-    #print(filtered_sentence)
-
-
-
-    nlp = en_core_web_sm.load()
-    
-    doc = nlp(filtered_sentence)
-    
-    lemma_word1 = [] 
-    for token in doc:
-        lemma_word1.append(token.lemma_)
-    return lemma_word1
-
-
-txt=""""He determined to drop his litigation with the monastry,and relinguish his claims to the wood-cuting and 
+txt=""""He determined to drop his  123 litigation with the monastry,and relinguish his claims to the wood-cuting and 
 fishery rihgts at once. He was the more ready to do this becuase the rights had become much less valuable, and he had 
 indeed the vaguest idea where the wood and river in question were."""
-a=text_preprocessing(txt)
-print(a)
+tp=Text_Preprocessing()
+
+print(tp.text_preprocessing(txt))
+
 
