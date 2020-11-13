@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from math import log
 from time import time
 from typing import Union
 
 # from sklearn.feature_extraction.text import TfidfVectorizer
+from preprocessing import preprocess
 
 
 class DocEntry:

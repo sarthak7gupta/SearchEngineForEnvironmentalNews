@@ -1,10 +1,8 @@
 import heapq
 import pickle
-from collections import defaultdict
-from math import sqrt
-from typing import Counter, Iterable, Iterator, List
-
-import lorem
+from collections import Counter, defaultdict
+from math import log, sqrt
+from typing import Iterable, Iterator, List, Tuple
 
 from inverted_index import InvertedIndex
 from preprocessing import preprocess
@@ -21,13 +19,14 @@ def generate_index_from_corpus(corpus: Iterable[str], doc_count: int) -> Inverte
 	return index
 
 
-def cosine(index: InvertedIndex, doc_count: int, query: str):
+def cosine(index: InvertedIndex, query: str) -> List[Tuple[float, str]]:
 	query = preprocess(query).split()
 	scores = defaultdict(float)
 	square_document_magnitudes = defaultdict(float)
 	square_query_magnitude = 0
 
 	for tq, tf_tq in Counter(query).items():
+		tf_tq = 1 + log(tf_tq)
 		tfidf_tq = tf_tq * index.get_idf(tq)
 		square_query_magnitude += tfidf_tq ** 2
 		posting_list_tq = index.get_posting_list(tq)
@@ -38,14 +37,10 @@ def cosine(index: InvertedIndex, doc_count: int, query: str):
 
 	query_magnitude = sqrt(square_query_magnitude)
 
-	print(query, scores, square_document_magnitudes, square_query_magnitude, query_magnitude, sep='\n\n!')
-
 	for doc_id in scores:
 		scores[doc_id] /= (query_magnitude * sqrt(square_document_magnitudes[doc_id]))
 
 	scores = [(score, doc_id) for doc_id, score in scores.items()]
-
-	heapq.heapify(scores)
 
 	return heapq.nlargest(3, scores)
 
@@ -56,16 +51,13 @@ def read_corpus(filenames: List[str]) -> Iterator[str]:
 
 
 if __name__ == "__main__":
-	corpus = [lorem.sentence() for _ in range(10)]
-	# corpus = ["brutus killed caesar brutus", "caesar calpurnia", "brutus friend john"]
+	corpus = ["brutus killed caesar brutus", "caesar calpurnia", "brutus friend john"]
 
 	doc_iterator = read_corpus(corpus)
 
 	index = generate_index_from_corpus(doc_iterator, len(corpus))
 
-	# print(index)
-
 	with open("index.pickle", "wb") as f:
 		pickle.dump(index, f)
 
-	print(cosine(index, len(corpus), "ipsum"))
+	print(cosine(index, "brutus caesar"))
