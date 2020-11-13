@@ -1,4 +1,4 @@
-import heapq
+from heapq import heapify, heappop, nlargest
 import pickle
 from collections import Counter, defaultdict
 from math import log, sqrt
@@ -18,8 +18,19 @@ def generate_index_from_corpus(corpus: Iterable[str], doc_count: int) -> Inverte
 
 	return index
 
+def threshold_scores(scores: dict) -> dict:
+	diff_thresh = 0.25
+	
+	scores = [(-score, doc_id) for doc_id, score in scores.items()]
+	heapify(scores)
 
-def cosine(index: InvertedIndex, query: str) -> List[Tuple[float, str]]:
+	thresh_scores = [heappop(scores)]
+	while scores and (scores[0][0] - thresh_scores[-1][0] <= diff_thresh):
+		thresh_scores.append(heappop(scores))
+
+	return {doc_id: -score for score, doc_id in thresh_scores}
+
+def cosine(index: InvertedIndex, query: str) -> dict:
 	query = preprocess(query).split()
 	scores = defaultdict(float)
 	square_query_magnitude = 0
@@ -38,9 +49,9 @@ def cosine(index: InvertedIndex, query: str) -> List[Tuple[float, str]]:
 	for doc_id in scores:
 		scores[doc_id] /= query_magnitude
 
-	scores = [(score, doc_id) for doc_id, score in scores.items()]
-
-	return heapq.nlargest(3, scores)
+	return threshold_scores(scores)
+	#scores = [(score, doc_id) for doc_id, score in scores.items()]
+	#return nlargest(3, scores)
 
 
 def read_corpus(filenames: List[str]) -> Iterator[str]:
