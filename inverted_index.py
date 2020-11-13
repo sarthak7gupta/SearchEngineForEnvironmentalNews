@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from math import log
+from math import log, sqrt
 from time import time
 from typing import Union
 
@@ -60,6 +60,10 @@ class InvertedIndex:
 		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
 			return self.__indexDictionary[term].posting_list[doc_id].tf_idf
 
+	def set_tfidf(self, term: str, doc_id: str, tf_idf: float) -> None:
+		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
+			self.__indexDictionary[term].posting_list[doc_id].tf_idf = tf_idf
+
 	def calc_idf(self, term: str, doc_count: int) -> None:
 		if term in self.__indexDictionary:
 			self.__indexDictionary[term].idf = log(doc_count / self.get_doc_freq(term)) + 1
@@ -67,13 +71,24 @@ class InvertedIndex:
 	def calc_tf_and_tfidf(self, term: str, doc_id: str) -> None:
 		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
 			tf = log(self.get_tf(term, doc_id)) + 1
-			self.__indexDictionary[term].posting_list[doc_id].tf_idf = tf * self.get_idf(term)
+			tf_idf = tf * self.get_idf(term)
+			self.__indexDictionary[term].posting_list[doc_id].tf_idf = tf_idf
+			return tf_idf
 
 	def populate_tfidf(self, doc_count: int) -> None:
+		doc_magnitudes = defaultdict(float)
 		for term in self.__indexDictionary:
 			self.calc_idf(term, doc_count)
 			for doc_id in self.__indexDictionary[term].posting_list:
-				self.calc_tf_and_tfidf(term, doc_id)
+				doc_magnitudes[doc_id] += (self.calc_tf_and_tfidf(term, doc_id))**2
+		
+		for doc_id in doc_magnitudes:
+			doc_magnitudes[doc_id] = sqrt(doc_magnitudes[doc_id])
+		
+		for term in self.__indexDictionary:
+			for doc_id in self.__indexDictionary[term].posting_list:
+				self.set_tfidf(term, doc_id, self.get_tfidf(term, doc_id) / doc_magnitudes[doc_id])
+
 
 	def populate_document(self, text: str, doc_id: str) -> None:
 		for term in text.split():

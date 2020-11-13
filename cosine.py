@@ -22,7 +22,6 @@ def generate_index_from_corpus(corpus: Iterable[str], doc_count: int) -> Inverte
 def cosine(index: InvertedIndex, query: str) -> List[Tuple[float, str]]:
 	query = preprocess(query).split()
 	scores = defaultdict(float)
-	square_document_magnitudes = defaultdict(float)
 	square_query_magnitude = 0
 
 	for tq, tf_tq in Counter(query).items():
@@ -33,12 +32,11 @@ def cosine(index: InvertedIndex, query: str) -> List[Tuple[float, str]]:
 		for doc_id, doc_id_stats in posting_list_tq.items():
 			tfidf_doc_id = doc_id_stats.tf_idf
 			scores[doc_id] += (tfidf_doc_id * tfidf_tq)
-			square_document_magnitudes[doc_id] += (tfidf_doc_id ** 2)
 
 	query_magnitude = sqrt(square_query_magnitude)
 
 	for doc_id in scores:
-		scores[doc_id] /= (query_magnitude * sqrt(square_document_magnitudes[doc_id]))
+		scores[doc_id] /= query_magnitude
 
 	scores = [(score, doc_id) for doc_id, score in scores.items()]
 
@@ -60,4 +58,4 @@ if __name__ == "__main__":
 	with open("index.pickle", "wb") as f:
 		pickle.dump(index, f)
 
-	print(cosine(index, "brutus caesar"))
+	print(cosine(index, "brutus"))
