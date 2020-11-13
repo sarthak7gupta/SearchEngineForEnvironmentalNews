@@ -4,6 +4,7 @@ from collections import defaultdict
 from math import log, sqrt
 from time import time
 from typing import Union
+import heapq
 
 # from sklearn.feature_extraction.text import TfidfVectorizer
 from preprocessing import preprocess
@@ -22,6 +23,7 @@ class TermEntry:
 	def __init__(self):
 		self.idf: float = 0.0
 		self.posting_list: dict = defaultdict(DocEntry)
+		self.champ_list: set = set()
 
 	def add_doc(self, doc_id: str):
 		self.posting_list[doc_id].tf += 1
@@ -43,6 +45,10 @@ class InvertedIndex:
 	def get_posting_list(self, term: str) -> Union[set, None]:
 		if term in self.__indexDictionary:
 			return self.__indexDictionary[term].posting_list
+
+	def get_champion_list(self, term: str) -> Union[set, None]:
+		if term in self.__indexDictionary:
+			return self.__indexDictionary[term].champ_list
 
 	def get_doc_freq(self, term: str) -> Union[int, None]:
 		if term in self.__indexDictionary:
@@ -89,6 +95,15 @@ class InvertedIndex:
 			for doc_id in self.__indexDictionary[term].posting_list:
 				self.set_tfidf(term, doc_id, self.get_tfidf(term, doc_id) / doc_magnitudes[doc_id])
 
+	def populate_champion_lists(self, num_champs: int) -> None:
+		for term in self.__indexDictionary:
+			term_entry = self.__indexDictionary[term]
+			if len(term_entry.posting_list) < num_champs:
+				term_entry.champ_list = set(term_entry.posting_list.keys())
+			else:
+				posting_list = [(doc_entry.tf_idf, doc_id) for doc_id, doc_entry in term_entry.posting_list.items()]
+				champ_list = heapq.nlargest(num_champs, posting_list)
+				term_entry.champ_list = {doc_id for (tf_idf, doc_id) in champ_list}
 
 	def populate_document(self, text: str, doc_id: str) -> None:
 		for term in text.split():
