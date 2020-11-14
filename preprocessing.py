@@ -2,7 +2,7 @@ import re
 from string import punctuation
 from typing import List
 
-import contractions
+from pycontractions import Contractions
 from spacy.lang.en import English
 # from spellchecker import SpellChecker
 
