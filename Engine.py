@@ -67,7 +67,7 @@ class Engine:
 		for doc_id in scores:
 			scores[doc_id] /= query_magnitude
 
-		return rank_scores_threshold(scores, thresh=0.25, min_scores=min_scores)
+		return rank_scores_threshold(scores, thresh=0.25)
 
 	def get_top_docs(
 		self,
