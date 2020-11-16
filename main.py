@@ -1,3 +1,4 @@
+from pprint import pprint
 from time import time
 
 from prompt_toolkit import PromptSession
@@ -5,10 +6,9 @@ from prompt_toolkit.completion import WordCompleter
 
 from engine_utils import build_engine, load_engine_from_pickle
 
-
 if __name__ == "__main__":
-	engine = build_engine()
-	# engine = load_engine_from_pickle()
+	# engine = build_engine()
+	engine = load_engine_from_pickle()
 
 	completer = WordCompleter(engine.all_terms, ignore_case=True)
 
@@ -22,7 +22,7 @@ if __name__ == "__main__":
 		results = engine.query(q)
 		et = time()
 		print()
-		print(f"{len(results)} result(s) in {et - st} sec(s)")
+		print(f"{len(results)} result(s) in {(et - st) * 1000} millisec(s)")
 		print()
-		[print(result) for result in results]
+		[pprint(result) for result in results]
 		print()

@@ -72,7 +72,7 @@ class InvertedIndex:
 		self.index[term].posting_list[doc_id].tf_idf = tfidf
 
 	def calculate_idf(self, term: str, doc_count: int) -> None:
-		self.index[term].idf = log(doc_count / self.get_doc_freq(term) + 1)
+		self.index[term].idf = log(doc_count / self.get_doc_freq(term)) + 1
 
 	def calculate_tf_and_tfidf(self, term: str, doc_id: doc_id_type) -> None:
 		tf = log(self.get_tf(term, doc_id)) + 1
