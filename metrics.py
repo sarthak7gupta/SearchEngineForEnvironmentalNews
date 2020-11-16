@@ -1,7 +1,7 @@
 import copy
 import math
 import timeit
-
+from pprint import pprint
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
@@ -25,8 +25,8 @@ class Metrics:
 	):
 		self.url = f"http://{elasticSearchHost}:{elasticSearchPort}/{elasticSearchIndex}/_search?pretty"
 		self.cols = columns
-		self.engine = build_engine()
-		# self.engine = load_engine_from_pickle()
+		#self.engine = build_engine()
+		self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):
 		common = [value for value in docsSet1 if value in docsSet2]
@@ -59,7 +59,7 @@ class Metrics:
 		return formatted
 
 	def getElasticSearchResults(self, query):
-		request = {"query": {"query_string": {"query": query}}}
+		request = {"query": {"query_string": {"query": query}},"from" : 0, "size" : 20}
 		elastic_results = requests.post(self.url, json=request)
 		# numElasticDocuments = len(elastic_results.json()["hits"]["hits"])
 		formattedElastic = self.formatResultElastic(
@@ -68,7 +68,7 @@ class Metrics:
 		return formattedElastic
 
 	def elasticSearchTime(self, query):
-		request = {"query": {"query_string": {"query": query}}}
+		request = {"query": {"query_string": {"query": query}},"from" : 0, "size" : 20}
 		elastic_results = requests.post(self.url, json=request)
 		return elastic_results.json()["took"]
 
@@ -223,6 +223,9 @@ if __name__ == "__main__":
 	print(
 		" 1.Precision(Single Query) \n 2.Recall(Single Query) \n 3.F1-Score(Single Query) \n 4.Mean Average Precision[MAP](Multiple Queries) \n 5.P@K(Single Query) \n 6.R@K(Single Query) \n 7.Precision-Recall curves against K ranks(Single Query) \n 8.ElasticSearch Latency(Single Query) \n 9.Search Engine Latency(Single Query) \n 10.ElasticSearch Queries Per Second(Mutlitple Queries) \n 11.Search Engine Queries Per Second(Mutlitple Queries)"
 	)
+	print("----------")
+	print(colored("Other: ","red"))
+	print("12. View ElasticSearch results")
 	session = PromptSession(completer=completer, search_ignore_case=True)
 
 	while True:
@@ -241,7 +244,7 @@ if __name__ == "__main__":
 			print("---------------------------")
 		elif metric == 2:
 			query = session.prompt(">> Enter Query: ")
-			print(mymetrics.engine.query(query))
+			#print(mymetrics.engine.query(query))
 			reca = mymetrics.recall(query, mymetrics.engine.query(query))
 			print("---------------------------")
 			print("Query given: ", query)
@@ -317,3 +320,8 @@ if __name__ == "__main__":
 			qps = mymetrics.qps_index(queryList)
 			print("Number of queries given: ", len(queryList))
 			print("Queries Per Millisecond for Index: ", max(qps, len(queryList)))
+		elif metric == 12:
+			results = mymetrics.getElasticSearchResults(session.prompt(">> Enter Query: "))
+			print()
+			[pprint(result) for result in results]
+			print()

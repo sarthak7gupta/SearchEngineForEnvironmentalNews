@@ -24,6 +24,13 @@ class Engine:
 
 			for row_number, row in enumerate(read_file(filename)):
 				doc = preprocess(row["Snippet"]).split()
+				doc += preprocess(row["Show"]).split()
+				sp = row["IAShowID"].split('_')
+				sp = sp[3:len(sp)]
+				s = ""
+				for i in sp:
+					s = s + i + " "
+				doc += preprocess(s).split()
 				metadata = row
 				file_id = self.fileid_mapping.get_file_id(filename)
 				doc_id = f"{file_id}_{row_number}"
@@ -67,7 +74,7 @@ class Engine:
 		for doc_id in scores:
 			scores[doc_id] /= query_magnitude
 
-		return rank_scores_threshold(scores, thresh=0.25)
+		return rank_scores_threshold(scores)
 
 	def get_top_docs(
 		self,
