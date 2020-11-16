@@ -4,7 +4,7 @@ from typing import List, Set
 
 from symspellpy import SymSpell
 
-from config import min_results, num_champs, term_idf_thresh
+from config import min_scores, num_champs, term_idf_thresh
 from inverted_index import InvertedIndex
 from mappings import Doc_DocID_Mapping, File_FileID_Mapping
 from preprocessing import preprocess
@@ -67,17 +67,17 @@ class Engine:
 		for doc_id in scores:
 			scores[doc_id] /= query_magnitude
 
-		return rank_scores_threshold(scores, thresh=0.25, min_results=min_results)
+		return rank_scores_threshold(scores, thresh=0.25, min_scores=min_scores)
 
 	def get_top_docs(
 		self,
 		query_terms: set,
 		term_idf_thresh: float = term_idf_thresh,
-		min_results: int = min_results
+		min_scores: int = min_scores
 	) -> Set[doc_id_type]:
 		top_docs = set()
 
-		while len(top_docs) < min_results and term_idf_thresh > 0:
+		while len(top_docs) < min_scores and term_idf_thresh > 0:
 			for term in query_terms:
 				if self.inverted_index.get_idf(term) > term_idf_thresh:
 					top_docs |= self.inverted_index.get_champion_list(term)
