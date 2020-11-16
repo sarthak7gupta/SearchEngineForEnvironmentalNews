@@ -33,7 +33,7 @@ def rank_scores_threshold(
 	while scores and (scores[0][0] - thresh_scores[-1][0] <= thresh):
 		thresh_scores.append(heappop(scores))
 
-	while len(thresh_scores) < min_results:
+	while scores and len(thresh_scores) < min_results:
 		thresh_scores.append(heappop(scores))
 
 	return [doc_id for _, doc_id in thresh_scores]
