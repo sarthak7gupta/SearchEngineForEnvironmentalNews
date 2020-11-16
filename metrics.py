@@ -1,11 +1,13 @@
 import copy
 import math
 import timeit
-
+from time import time
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
-
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from termcolor import colored
 from engine_utils import build_engine, load_engine_from_pickle
 
 
@@ -25,11 +27,17 @@ class Metrics:
 		)
 		self.cols = columns
 		self.engine = build_engine()
-		# self.engine = load_engine_from_pickle()
+		#self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):
 		common = [value for value in docsSet1 if value in docsSet2]
 		return common
+
+	def getQueriesFile(self,filename):
+		with open(filename) as f:
+			content = f.readlines()
+		content = [x.strip() for x in content] 
+		return content
 
 	def formatResultElastic(self, elasticDocs, cols):
 		formatted = []
@@ -65,9 +73,9 @@ class Metrics:
 		elastic_results = requests.post(self.url, json=request)
 		return elastic_results.json()["took"]
 
-	def searchTime(self, Index, query):
+	def searchTime(self, query):
 		start = timeit.default_timer()
-		results = Index.query(query)
+		results = self.engine.query(query)
 		stop = timeit.default_timer()
 		return (stop - start) * 1000
 
@@ -178,6 +186,7 @@ class Metrics:
 			request = {"query": {"query_string": {"query": query}}}
 			elastic_results = requests.post(self.url, json=request)
 			time_taken += elastic_results.json()["took"]
+			#print(time_taken)
 		qps_val = time_taken / num_queries
 		return qps_val
 
@@ -185,67 +194,119 @@ class Metrics:
 	Return queries per second in milliseconds(for our IR system)
 	"""
 
-	def qps_index(self, queriesSet, Index):
+	def qps_index(self, queriesSet):
 		time_taken = 0
 		num_queries = len(queriesSet)
 		for query in queriesSet:
-			self.searchTime(Index, query)
+			self.searchTime(query)
 		qps_val = time_taken / num_queries
 		return qps_val
 
 
-docs = [
-	{
-		"IAPreviewThumb": "https://archive.org/download/BBCNEWS_20170329_023000_Westminster_Terror_Attack_-_Panorama/BBCNEWS_20170329_023000_Westminster_Terror_Attack_-_Panorama.thumbs/BBCNEWS_20170329_023000_Westminster_Terror_Attack_-_Panorama_001798.jpg",
-		"IAShowID": "BBCNEWS_20170329_023000_Westminster_Terror_Attack_-_Panorama",
-		"MatchDateTime": "3/29/2017 3:00:19",
-		"Show": "Westminster Terror Attack - Panorama",
-		"Snippet": "and around the globe. i'm reged ahmad. our top stories: brexit begins. britain's prime minister signs the letter kick-starting the uk's departure from the european union. president trump scraps us plans to combat climate change.",
-		"Station": "BBCNEWS",
-		"URL": "https://archive.org/details/BBCNEWS_20170329_023000_Westminster_Terror_Attack_-_Panorama#start/1804/end/1839",
-		"csv_file": "BBCNEWS.201703.csv",
-		"id": "4_23",
-		"row_number": 24,
-	}
-]
+if __name__ == "__main__":
+	mymetrics = Metrics(
+		"172.21.12.60",
+		9200,
+		"env_news",
+		[
+			"URL",
+			"MatchDateTime",
+			"Station",
+			"Show",
+			"IAShowID",
+			"IAPreviewThumb",
+			"Snippet",
+		],
+	)
+	engine = mymetrics.engine
+	completer = WordCompleter(engine.all_terms, ignore_case=True)
+	print(colored("Metrics available: ","red"))
+	print(" 1.Precision(Single Query) \n 2.Recall(Single Query) \n 3.F1-Score(Single Query) \n 4.Mean Average Precision[MAP](Multiple Queries) \n 5.P@K(Single Query) \n 6.R@K(Single Query) \n 7.Precision-Recall curves against K ranks(Single Query) \n 8.ElasticSearch Latency(Single Query) \n 9.Search Engine Latency(Single Query) \n 10.ElasticSearch Queries Per Second(Mutlitple Queries) \n 11.Search Engine Queries Per Second(Mutlitple Queries)")
+	session = PromptSession(completer=completer, search_ignore_case=True)
 
-docs2 = [
-	{
-		"IAPreviewThumb": "https://archive.org/download/MSNBCW_20170120_150000_The_Inauguration_of_Donald_Trump/MSNBCW_20170120_150000_The_Inauguration_of_Donald_Trump.thumbs/MSNBCW_20170120_150000_The_Inauguration_of_Donald_Trump_000297.jpg",
-		"IAShowID": "MSNBCW_20170120_150000_The_Inauguration_of_Donald_Trump",
-		"MatchDateTime": "1/20/2017 15:05:13",
-		"Show": "The Inauguration of Donald Trump",
-		"Snippet": "confirmation hearings not so successfully. and to roll back everything, it's frightening on climate change. the president-elect said about his son-in-law last night, if he can't bring about middle",
-		"Station": "MSNBC",
-		"URL": "https://archive.org/details/MSNBCW_20170120_150000_The_Inauguration_of_Donald_Trump#start/298/end/333",
-	}
-]
+	while True:
+		try: metric = int(session.prompt("> Enter Metric: "))
+		except KeyboardInterrupt: continue
+		except EOFError: break
+		if metric == 1:
+			query = session.prompt(">> Enter Query: ")
+			prec = mymetrics.precision(query,mymetrics.engine.query(query))
+			print('---------------------------')
+			print("Query given: ",query)
+			print("Precision: ",prec)
+			print('---------------------------')
+		elif metric == 2:
+			query = session.prompt(">> Enter Query: ")
+			print(mymetrics.engine.query(query))
+			reca = mymetrics.recall(query,mymetrics.engine.query(query))
+			print('---------------------------')
+			print("Query given: ",query)
+			print("Recall: ",reca)
+			print('---------------------------')	
+		elif metric == 3:
+			query = session.prompt(">> Enter Query: ")
+			f1score = mymetrics.f1score(query,mymetrics.engine.query(query))
+			print('---------------------------')
+			print("Query given: ",query)
+			print("F1 Score: ",f1score)
+			print('---------------------------')	
+		elif metric == 4:
+			print("[MESSAGE]This metric requires multiple queries")
+			num_queries = int(session.prompt(">> Enter number of queries: "))
+			queryList = []
+			for i in range(0,num_queries):
+				queryList.append(session.prompt(">> Query: "))
+			k = int(session.prompt(">> Enter value of K(Ranks) for MAP: "))
+			docList= []
+			for query in queryList:
+				docList.append(mymetrics.engine.query(query))
+			#print(docList)
+			map = mymetrics.MAP(queryList,docList,k)
+			print('---------------------------')
+			print("Queries given: ")
+			for i in queryList:
+				print("- ",i)
+			print("Mean Average Precision: ",map)
+			print('---------------------------')
+		elif metric == 5:
+			query = session.prompt(">> Enter Query: ")
+			k = int(session.prompt(">> Enter K(Rank): "))
+			pk = mymetrics.p_at_k(query,mymetrics.engine.query(query),k)
+			print('---------------------------')
+			print("Precision at ",k,": ",pk)
+		elif metric == 6:
+			query = session.prompt(">> Enter Query: ")
+			k = int(session.prompt(">> Enter K(Rank): "))
+			rk = mymetrics.p_at_k(query,mymetrics.engine.query(query),k)
+			print('---------------------------')
+			print("Recall at ",k,": ",rk)
+		elif metric == 7:
+			print("[MESSAGE]This metric will display a graph,close graph to proceed")
+			query = session.prompt(">> Enter Query: ")
+			k = int(session.prompt(">> Enter K(Rank): "))
+			mymetrics.pr_graph(query,mymetrics.engine.query(query),k)
+		elif metric == 8:
+			query = session.prompt(">> Enter Query: ")
+			latency = mymetrics.elasticSearchTime(query)
+			print("Query: ",query)
+			print("Elastic Search took: ",latency,"ms")
+		elif metric == 9:
+			query = session.prompt(">> Enter Query: ")
+			latency = mymetrics.searchTime(query)
+			print("Query: ",query)
+			print("Search Engine took: ",latency,"ms")
+		elif metric == 10:
+			print("[MESSAGE]This metric requires a text file containing multiple queries")
+			file_name = session.prompt(">> Enter filename(with .txt): ")
+			queryList = mymetrics.getQueriesFile(file_name)
+			qps = mymetrics.qps_elastic(queryList)
+			print("Number of queries given: ",len(queryList))
+			print("Queries Per Second for ElasticSearch: ",qps)	
+		elif metric == 11:
+			print("[MESSAGE]This metric requires a text file containing multiple queries")
+			file_name = session.prompt(">> Enter filename(with .txt): ")
+			queryList = mymetrics.getQueriesFile(file_name)
+			qps = mymetrics.qps_index(queryList)
+			print("Number of queries given: ",len(queryList))
+			print("Queries Per Millisecond for Index: ",max(qps,len(queryList)))		
 
-mymetrics = Metrics(
-	"54.157.12.8",
-	9200,
-	"env_news",
-	[
-		"URL",
-		"MatchDateTime",
-		"Station",
-		"Show",
-		"IAShowID",
-		"IAPreviewThumb",
-		"Snippet",
-	],
-)
-# print(mymetrics.precision("Westminster terror attack",docs))
-# print(mymetrics.recall("Westminster terror attack",docs))
-# print(mymetrics.f1score("Westminster terror attack",docs))
-# print(mymetrics.elasticSearchTime("Westminster terror attack"))
-# print(mymetrics.f1score("Westminster terror attack",docs))
-# mymetrics.pr_graph("Westminster terror attack",docs,20)
-query1Results = docs2 * 10
-query2Results = docs * 10
-ldocs = [query1Results, query2Results]
-# doc = mymetrics.getElasticSearchResults("Donald trump")[0]
-print(mymetrics.MAP(["Westminster terror attack", "Donald trump"], ldocs, 4))
-# print(mymetrics.qps_elastic(["Westminster terror attack","Donald trump"]))
-
-# print(mymetrics.f1score("Modi",docs))
