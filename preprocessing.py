@@ -2,12 +2,10 @@ import re
 from string import punctuation
 from typing import List
 
-from pycontractions import Contractions
+import contractions
 from spacy.lang.en import English
-# from spellchecker import SpellChecker
 
 nlp = English()
-# spell = SpellChecker()
 
 
 def clean_text(text: str) -> str:
@@ -16,8 +14,6 @@ def clean_text(text: str) -> str:
 	text = re.sub(r"\s+", " ", text)
 
 	text = "".join(filter(lambda x: x not in punctuation, text))
-
-	# text = "".join(filter(lambda x: not x.isdigit(), text))
 
 	return text
 

@@ -1,6 +1,5 @@
 contractions==0.0.25
-lorem==0.1.1
-nltk==3.5
-pandas==1.1.4
-sklearn==0.0
+matplotlib==3.3.3
+prompt_toolkit==3.0.8
 spacy==2.3.2
+symspellpy==6.7.0

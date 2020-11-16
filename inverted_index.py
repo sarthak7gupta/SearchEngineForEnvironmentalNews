@@ -1,139 +1,103 @@
-#from __future__ import annotations
+from __future__ import annotations
 
 from collections import defaultdict
-from math import log, sqrt
-from time import time
-from typing import Union
+from math import log
 import heapq
 
-# from sklearn.feature_extraction.text import TfidfVectorizer
-from preprocessing import preprocess
+from typing import Dict
+
+from config import num_champs
+from utils import doc_id_type
 
 
 class DocEntry:
 	def __init__(self):
 		self.tf_idf: float = 0.0
-		self.tf: int = 0
+		self.tf: float = 0
 
 	def __repr__(self) -> str:
-		return f"{{tf_idf:{self.tf_idf}, tf: {self.tf}}}"
+		return f"{{tf_idf: {self.tf_idf}, tf: {self.tf}}}"
 
 
 class TermEntry:
 	def __init__(self):
 		self.idf: float = 0.0
-		self.posting_list: dict = defaultdict(DocEntry)
+		self.posting_list: Dict[doc_id_type, DocEntry] = defaultdict(DocEntry)
 		self.champ_list: set = set()
+		self.term_count: int = 0
 
-	def add_doc(self, doc_id: str):
+	def add_doc(self, doc_id: doc_id_type):
 		self.posting_list[doc_id].tf += 1
+		self.term_count += 1
 
 	def __repr__(self) -> str:
-		return f"{{idf: {self.idf}, posting_list: {self.posting_list}}}"
+		return f"{{idf: {self.idf}, posting_list: {self.posting_list}, " +\
+			f"champion_list: {self.champ_list}, term_count: {self.term_count}}}"
 
 
 class InvertedIndex:
 	def __init__(self):
-		self.__indexDictionary: dict = defaultdict(TermEntry)
+		self.index: Dict[str, TermEntry] = defaultdict(TermEntry)
 
-	def add_entry(self, term, doc_id) -> None:
-		self.__indexDictionary[term].add_doc(doc_id)
+	def add_entry(self, term: str, doc_id: doc_id_type) -> None:
+		self.index[term].add_doc(doc_id)
 
 	def get_terms(self) -> set:
-		return set(self.__indexDictionary.keys())
+		return set(self.index.keys())
 
-	def get_posting_list(self, term: str) -> Union[set, None]:
-		if term in self.__indexDictionary:
-			return self.__indexDictionary[term].posting_list
+	def get_posting_list(self, term: str) -> Dict[doc_id_type, DocEntry]:
+		return self.index[term].posting_list
 
-	def get_champion_list(self, term: str) -> Union[set, None]:
-		if term in self.__indexDictionary:
-			return self.__indexDictionary[term].champ_list
+	def get_champion_list(self, term: str) -> set:
+		return self.index[term].champ_list
 
-	def get_doc_freq(self, term: str) -> Union[int, None]:
-		if term in self.__indexDictionary:
-			return len(self.__indexDictionary[term].posting_list)
+	def get_term_count(self, term: str) -> int:
+		return self.index[term].term_count
 
-	def get_idf(self, term: str) -> Union[float, None]:
-		if term in self.__indexDictionary:
-			return self.__indexDictionary[term].idf
+	def get_doc_freq(self, term: str) -> int:
+		return len(self.index[term].posting_list)
 
-	def get_tf(self, term: str, doc_id: str) -> Union[int, None]:
-		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
-			return self.__indexDictionary[term].posting_list[doc_id].tf
+	def get_idf(self, term: str) -> float:
+		return self.index[term].idf
 
-	def get_tfidf(self, term: str, doc_id: str) -> Union[float, None]:
-		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
-			return self.__indexDictionary[term].posting_list[doc_id].tf_idf
+	def get_tf(self, term: str, doc_id: doc_id_type) -> int:
+		return self.index[term].posting_list[doc_id].tf
 
-	def set_tfidf(self, term: str, doc_id: str, tf_idf: float) -> None:
-		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
-			self.__indexDictionary[term].posting_list[doc_id].tf_idf = tf_idf
+	def set_tf(self, term: str, doc_id: doc_id_type, tf: float) -> None:
+		self.index[term].posting_list[doc_id].tf = tf
 
-	def calc_idf(self, term: str, doc_count: int) -> None:
-		if term in self.__indexDictionary:
-			self.__indexDictionary[term].idf = log(doc_count / self.get_doc_freq(term)) + 1
+	def get_tfidf(self, term: str, doc_id: doc_id_type) -> float:
+		return self.index[term].posting_list[doc_id].tf_idf
 
-	def calc_tf_and_tfidf(self, term: str, doc_id: str) -> None:
-		if term in self.__indexDictionary and doc_id in self.__indexDictionary[term].posting_list:
-			tf = log(self.get_tf(term, doc_id)) + 1
-			tf_idf = tf * self.get_idf(term)
-			self.__indexDictionary[term].posting_list[doc_id].tf_idf = tf_idf
-			return tf_idf
+	def set_tfidf(self, term: str, doc_id: doc_id_type, tfidf: float) -> None:
+		self.index[term].posting_list[doc_id].tf_idf = tfidf
+
+	def calculate_idf(self, term: str, doc_count: int) -> None:
+		self.index[term].idf = log(doc_count / self.get_doc_freq(term) + 1)
+
+	def calculate_tf_and_tfidf(self, term: str, doc_id: doc_id_type) -> None:
+		tf = log(self.get_tf(term, doc_id)) + 1
+		self.set_tf(term, doc_id, tf)
+		tfidf = tf * self.get_idf(term)
+		self.set_tfidf(term, doc_id, tfidf)
 
 	def populate_tfidf(self, doc_count: int) -> None:
-		doc_magnitudes = defaultdict(float)
-		for term in self.__indexDictionary:
-			self.calc_idf(term, doc_count)
-			for doc_id in self.__indexDictionary[term].posting_list:
-				doc_magnitudes[doc_id] += (self.calc_tf_and_tfidf(term, doc_id))**2
-		
-		for doc_id in doc_magnitudes:
-			doc_magnitudes[doc_id] = sqrt(doc_magnitudes[doc_id])
-		
-		for term in self.__indexDictionary:
-			for doc_id in self.__indexDictionary[term].posting_list:
-				self.set_tfidf(term, doc_id, self.get_tfidf(term, doc_id) / doc_magnitudes[doc_id])
+		for term in self.index:
+			self.calculate_idf(term, doc_count)
+			for doc_id in self.index[term].posting_list:
+				self.calculate_tf_and_tfidf(term, doc_id)
 
-	def populate_champion_lists(self, num_champs: int) -> None:
-		for term in self.__indexDictionary:
-			term_entry = self.__indexDictionary[term]
+	def populate_champion_list(self, num_champs: int = num_champs) -> None:
+		for term_entry in self.index.values():
 			if len(term_entry.posting_list) < num_champs:
 				term_entry.champ_list = set(term_entry.posting_list.keys())
 			else:
-				posting_list = [(doc_entry.tf_idf, doc_id) for doc_id, doc_entry in term_entry.posting_list.items()]
+				posting_list = [
+					(doc_entry.tf_idf, doc_id)
+					for doc_id, doc_entry in term_entry.posting_list.items()
+				]
 				champ_list = heapq.nlargest(num_champs, posting_list)
-				term_entry.champ_list = {doc_id for (tf_idf, doc_id) in champ_list}
-
-	def populate_document(self, text: str, doc_id: str) -> None:
-		for term in text.split():
-			self.add_entry(term, doc_id)
+				term_entry.champ_list = {doc_id for _, doc_id in champ_list}
 
 	def __repr__(self) -> str:
-		return f"{self.__indexDictionary}"
-
-
-if __name__ == "__main__":
-	corpus = ["brutus killed caesar brutus", "caesar calpurnia", "brutus friend john"]
-
-	# # % SKL Test
-	# start_time = time()
-
-	# vectorizer = TfidfVectorizer(smooth_idf=False, sublinear_tf=True)
-	# tfidf = vectorizer.fit_transform(corpus)
-
-	# print(time() - start_time)
-
-	# print([round(i, 8) for i in vectorizer.idf_])
-
-	# % Own Test
-	start_time = time()
-
-	index = InvertedIndex()
-	for doc_id, doc in enumerate(corpus, 1):
-		index.populate_document(doc, doc_id)
-	index.populate_tfidf(len(corpus))
-
-	print(time() - start_time)
-
-	print([round(index.get_idf(i), 8) for i in ["brutus", "caesar", "calpurnia", "friend", "john", "killed"]])
+		return f"{self.index}"
