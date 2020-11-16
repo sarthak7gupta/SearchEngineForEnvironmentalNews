@@ -60,7 +60,7 @@ class Engine:
 				tq
 			).items():
 				if doc_id in top_docs:
-					scores[doc_id] += doc_id_stats.tf_idf * tfidf_tq
+					scores[doc_id] += doc_id_stats.tfidf * tfidf_tq
 
 		query_magnitude = sqrt(square_query_magnitude)
 

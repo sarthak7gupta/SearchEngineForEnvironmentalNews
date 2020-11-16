@@ -3,3 +3,4 @@ matplotlib==3.3.3
 prompt_toolkit==3.0.8
 spacy==2.3.2
 symspellpy==6.7.0
+termcolor==1.1.0

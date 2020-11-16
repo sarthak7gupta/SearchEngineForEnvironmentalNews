@@ -1,13 +1,14 @@
 import copy
 import math
 import timeit
-from time import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from termcolor import colored
+
 from engine_utils import build_engine, load_engine_from_pickle
 
 
@@ -22,21 +23,19 @@ class Metrics:
 	def __init__(
 		self, elasticSearchHost, elasticSearchPort, elasticSearchIndex, columns
 	):
-		self.url = (
-			f"http://{elasticSearchHost}:{elasticSearchPort}/{elasticSearchIndex}/_search?pretty"
-		)
+		self.url = f"http://{elasticSearchHost}:{elasticSearchPort}/{elasticSearchIndex}/_search?pretty"
 		self.cols = columns
 		self.engine = build_engine()
-		#self.engine = load_engine_from_pickle()
+		# self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):
 		common = [value for value in docsSet1 if value in docsSet2]
 		return common
 
-	def getQueriesFile(self,filename):
+	def getQueriesFile(self, filename):
 		with open(filename) as f:
 			content = f.readlines()
-		content = [x.strip() for x in content] 
+		content = [x.strip() for x in content]
 		return content
 
 	def formatResultElastic(self, elasticDocs, cols):
@@ -186,7 +185,7 @@ class Metrics:
 			request = {"query": {"query_string": {"query": query}}}
 			elastic_results = requests.post(self.url, json=request)
 			time_taken += elastic_results.json()["took"]
-			#print(time_taken)
+			# print(time_taken)
 		qps_val = time_taken / num_queries
 		return qps_val
 
@@ -205,7 +204,7 @@ class Metrics:
 
 if __name__ == "__main__":
 	mymetrics = Metrics(
-		"172.21.12.60",
+		"54.157.12.8",
 		9200,
 		"env_news",
 		[
@@ -220,93 +219,101 @@ if __name__ == "__main__":
 	)
 	engine = mymetrics.engine
 	completer = WordCompleter(engine.all_terms, ignore_case=True)
-	print(colored("Metrics available: ","red"))
-	print(" 1.Precision(Single Query) \n 2.Recall(Single Query) \n 3.F1-Score(Single Query) \n 4.Mean Average Precision[MAP](Multiple Queries) \n 5.P@K(Single Query) \n 6.R@K(Single Query) \n 7.Precision-Recall curves against K ranks(Single Query) \n 8.ElasticSearch Latency(Single Query) \n 9.Search Engine Latency(Single Query) \n 10.ElasticSearch Queries Per Second(Mutlitple Queries) \n 11.Search Engine Queries Per Second(Mutlitple Queries)")
+	print(colored("Metrics available: ", "red"))
+	print(
+		" 1.Precision(Single Query) \n 2.Recall(Single Query) \n 3.F1-Score(Single Query) \n 4.Mean Average Precision[MAP](Multiple Queries) \n 5.P@K(Single Query) \n 6.R@K(Single Query) \n 7.Precision-Recall curves against K ranks(Single Query) \n 8.ElasticSearch Latency(Single Query) \n 9.Search Engine Latency(Single Query) \n 10.ElasticSearch Queries Per Second(Mutlitple Queries) \n 11.Search Engine Queries Per Second(Mutlitple Queries)"
+	)
 	session = PromptSession(completer=completer, search_ignore_case=True)
 
 	while True:
-		try: metric = int(session.prompt("> Enter Metric: "))
-		except KeyboardInterrupt: continue
-		except EOFError: break
+		try:
+			metric = int(session.prompt("> Enter Metric: "))
+		except KeyboardInterrupt:
+			continue
+		except EOFError:
+			break
 		if metric == 1:
 			query = session.prompt(">> Enter Query: ")
-			prec = mymetrics.precision(query,mymetrics.engine.query(query))
-			print('---------------------------')
-			print("Query given: ",query)
-			print("Precision: ",prec)
-			print('---------------------------')
+			prec = mymetrics.precision(query, mymetrics.engine.query(query))
+			print("---------------------------")
+			print("Query given: ", query)
+			print("Precision: ", prec)
+			print("---------------------------")
 		elif metric == 2:
 			query = session.prompt(">> Enter Query: ")
 			print(mymetrics.engine.query(query))
-			reca = mymetrics.recall(query,mymetrics.engine.query(query))
-			print('---------------------------')
-			print("Query given: ",query)
-			print("Recall: ",reca)
-			print('---------------------------')	
+			reca = mymetrics.recall(query, mymetrics.engine.query(query))
+			print("---------------------------")
+			print("Query given: ", query)
+			print("Recall: ", reca)
+			print("---------------------------")
 		elif metric == 3:
 			query = session.prompt(">> Enter Query: ")
-			f1score = mymetrics.f1score(query,mymetrics.engine.query(query))
-			print('---------------------------')
-			print("Query given: ",query)
-			print("F1 Score: ",f1score)
-			print('---------------------------')	
+			f1score = mymetrics.f1score(query, mymetrics.engine.query(query))
+			print("---------------------------")
+			print("Query given: ", query)
+			print("F1 Score: ", f1score)
+			print("---------------------------")
 		elif metric == 4:
 			print("[MESSAGE]This metric requires multiple queries")
 			num_queries = int(session.prompt(">> Enter number of queries: "))
 			queryList = []
-			for i in range(0,num_queries):
+			for i in range(0, num_queries):
 				queryList.append(session.prompt(">> Query: "))
 			k = int(session.prompt(">> Enter value of K(Ranks) for MAP: "))
-			docList= []
+			docList = []
 			for query in queryList:
 				docList.append(mymetrics.engine.query(query))
-			#print(docList)
-			map = mymetrics.MAP(queryList,docList,k)
-			print('---------------------------')
+			# print(docList)
+			map = mymetrics.MAP(queryList, docList, k)
+			print("---------------------------")
 			print("Queries given: ")
 			for i in queryList:
-				print("- ",i)
-			print("Mean Average Precision: ",map)
-			print('---------------------------')
+				print("- ", i)
+			print("Mean Average Precision: ", map)
+			print("---------------------------")
 		elif metric == 5:
 			query = session.prompt(">> Enter Query: ")
 			k = int(session.prompt(">> Enter K(Rank): "))
-			pk = mymetrics.p_at_k(query,mymetrics.engine.query(query),k)
-			print('---------------------------')
-			print("Precision at ",k,": ",pk)
+			pk = mymetrics.p_at_k(query, mymetrics.engine.query(query), k)
+			print("---------------------------")
+			print("Precision at ", k, ": ", pk)
 		elif metric == 6:
 			query = session.prompt(">> Enter Query: ")
 			k = int(session.prompt(">> Enter K(Rank): "))
-			rk = mymetrics.p_at_k(query,mymetrics.engine.query(query),k)
-			print('---------------------------')
-			print("Recall at ",k,": ",rk)
+			rk = mymetrics.p_at_k(query, mymetrics.engine.query(query), k)
+			print("---------------------------")
+			print("Recall at ", k, ": ", rk)
 		elif metric == 7:
 			print("[MESSAGE]This metric will display a graph,close graph to proceed")
 			query = session.prompt(">> Enter Query: ")
 			k = int(session.prompt(">> Enter K(Rank): "))
-			mymetrics.pr_graph(query,mymetrics.engine.query(query),k)
+			mymetrics.pr_graph(query, mymetrics.engine.query(query), k)
 		elif metric == 8:
 			query = session.prompt(">> Enter Query: ")
 			latency = mymetrics.elasticSearchTime(query)
-			print("Query: ",query)
-			print("Elastic Search took: ",latency,"ms")
+			print("Query: ", query)
+			print("Elastic Search took: ", latency, "ms")
 		elif metric == 9:
 			query = session.prompt(">> Enter Query: ")
 			latency = mymetrics.searchTime(query)
-			print("Query: ",query)
-			print("Search Engine took: ",latency,"ms")
+			print("Query: ", query)
+			print("Search Engine took: ", latency, "ms")
 		elif metric == 10:
-			print("[MESSAGE]This metric requires a text file containing multiple queries")
+			print(
+				"[MESSAGE]This metric requires a text file containing multiple queries"
+			)
 			file_name = session.prompt(">> Enter filename(with .txt): ")
 			queryList = mymetrics.getQueriesFile(file_name)
 			qps = mymetrics.qps_elastic(queryList)
-			print("Number of queries given: ",len(queryList))
-			print("Queries Per Second for ElasticSearch: ",qps)	
+			print("Number of queries given: ", len(queryList))
+			print("Queries Per Second for ElasticSearch: ", qps)
 		elif metric == 11:
-			print("[MESSAGE]This metric requires a text file containing multiple queries")
+			print(
+				"[MESSAGE]This metric requires a text file containing multiple queries"
+			)
 			file_name = session.prompt(">> Enter filename(with .txt): ")
 			queryList = mymetrics.getQueriesFile(file_name)
 			qps = mymetrics.qps_index(queryList)
-			print("Number of queries given: ",len(queryList))
-			print("Queries Per Millisecond for Index: ",max(qps,len(queryList)))		
-
+			print("Number of queries given: ", len(queryList))
+			print("Queries Per Millisecond for Index: ", max(qps, len(queryList)))

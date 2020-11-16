@@ -1,6 +1,7 @@
+from __future__ import annotations
 
 from collections import defaultdict
-from math import log
+from math import log, sqrt
 import heapq
 
 from typing import Dict
@@ -11,11 +12,11 @@ from utils import doc_id_type
 
 class DocEntry:
 	def __init__(self):
-		self.tf_idf: float = 0.0
+		self.tfidf: float = 0.0
 		self.tf: float = 0
 
 	def __repr__(self) -> str:
-		return f"{{tf_idf: {self.tf_idf}, tf: {self.tf}}}"
+		return f"{{tfidf: {self.tfidf}, tf: {self.tf}}}"
 
 
 class TermEntry:
@@ -66,10 +67,10 @@ class InvertedIndex:
 		self.index[term].posting_list[doc_id].tf = tf
 
 	def get_tfidf(self, term: str, doc_id: doc_id_type) -> float:
-		return self.index[term].posting_list[doc_id].tf_idf
+		return self.index[term].posting_list[doc_id].tfidf
 
 	def set_tfidf(self, term: str, doc_id: doc_id_type, tfidf: float) -> None:
-		self.index[term].posting_list[doc_id].tf_idf = tfidf
+		self.index[term].posting_list[doc_id].tfidf = tfidf
 
 	def calculate_idf(self, term: str, doc_count: int) -> None:
 		self.index[term].idf = log(doc_count / self.get_doc_freq(term)) + 1
@@ -81,10 +82,20 @@ class InvertedIndex:
 		self.set_tfidf(term, doc_id, tfidf)
 
 	def populate_tfidf(self, doc_count: int) -> None:
+		document_magnitudes = defaultdict(float)
+
 		for term in self.index:
 			self.calculate_idf(term, doc_count)
 			for doc_id in self.index[term].posting_list:
 				self.calculate_tf_and_tfidf(term, doc_id)
+				document_magnitudes[doc_id] += self.get_tfidf(term, doc_id) ** 2
+
+		for doc_id, magnitude in document_magnitudes.items():
+			document_magnitudes[doc_id] = sqrt(magnitude)
+
+		for term in self.index:
+			for doc_id in self.index[term].posting_list:
+				self.set_tfidf(term, doc_id, self.get_tfidf(term, doc_id) / document_magnitudes[doc_id])
 
 	def populate_champion_list(self, num_champs: int = num_champs) -> None:
 		for term_entry in self.index.values():
@@ -92,7 +103,7 @@ class InvertedIndex:
 				term_entry.champ_list = set(term_entry.posting_list.keys())
 			else:
 				posting_list = [
-					(doc_entry.tf_idf, doc_id)
+					(doc_entry.tfidf, doc_id)
 					for doc_id, doc_entry in term_entry.posting_list.items()
 				]
 				champ_list = heapq.nlargest(num_champs, posting_list)
