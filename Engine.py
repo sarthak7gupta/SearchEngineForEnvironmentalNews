@@ -73,10 +73,11 @@ class Engine:
 		self,
 		query_terms: set,
 		term_idf_thresh: float = term_idf_thresh,
+		min_results: int = min_results
 	) -> Set[doc_id_type]:
 		top_docs = set()
 
-		while not top_docs:
+		while len(top_docs) < min_results and term_idf_thresh > 0:
 			for term in query_terms:
 				if self.inverted_index.get_idf(term) > term_idf_thresh:
 					top_docs |= self.inverted_index.get_champion_list(term)
