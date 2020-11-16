@@ -1,11 +1,9 @@
 import csv
-from glob import glob
 from heapq import heapify, heappop
 from pickle import dump, load
 from typing import Any, Dict, Iterator, List
 
-from config import data_dir, min_results, pickle_filename, score_diff_thresh
-from Engine import Engine
+from config import min_results, score_diff_thresh
 
 doc_id_type = str
 
@@ -41,15 +39,3 @@ def rank_scores_threshold(
 		thresh_scores += scores[:min_results - num_thresh]
 
 	return [doc_id for _, doc_id in thresh_scores]
-
-
-def build_engine(data_dir: str = data_dir) -> Engine:
-	engine = Engine(sorted(glob(f"{data_dir}/*.csv")))
-
-	save_pickle(engine, pickle_filename)
-
-	return engine
-
-
-def load_engine_from_pickle() -> Engine:
-	return load_pickle(pickle_filename)

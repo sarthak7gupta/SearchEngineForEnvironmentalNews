@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import requests
 
-from utils import build_engine, load_engine_from_pickle
+from engine_utils import build_engine, load_engine_from_pickle
 
 
 def genTemplate(columns):
@@ -24,7 +24,8 @@ class Metrics:
 			f"http://{elasticSearchHost}:{elasticSearchPort}/{elasticSearchIndex}/_search?pretty"
 		)
 		self.cols = columns
-		self.engine = load_engine_from_pickle()
+		self.engine = build_engine()
+		# self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):
 		common = [value for value in docsSet1 if value in docsSet2]
