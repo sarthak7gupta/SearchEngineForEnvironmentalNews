@@ -2,6 +2,7 @@ import copy
 import math
 import timeit
 from pprint import pprint
+
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
@@ -25,7 +26,7 @@ class Metrics:
 	):
 		self.url = f"http://{elasticSearchHost}:{elasticSearchPort}/{elasticSearchIndex}/_search?pretty"
 		self.cols = columns
-		#self.engine = build_engine()
+		# self.engine = build_engine()
 		self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):

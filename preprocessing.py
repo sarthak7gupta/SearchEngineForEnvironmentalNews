@@ -1,6 +1,7 @@
 import re
 from string import punctuation
 from typing import List
+from urllib.parse import urlsplit
 
 import contractions
 from spacy.lang.en import English
@@ -14,6 +15,8 @@ def clean_text(text: str) -> str:
 	text = re.sub(r"\s+", " ", text)
 
 	text = "".join(filter(lambda x: x not in punctuation, text))
+
+	text = text.strip()
 
 	return text
 
@@ -32,6 +35,16 @@ def lemmatise(text: str) -> str:
 	doc = nlp(text)
 
 	return " ".join(token.lemma_ for token in doc)
+
+
+def clean_url(url: str) -> str:
+	url = " ".join(urlsplit(url)[2:])
+
+	url = "".join(char if not char.isdigit() and char not in punctuation else " " for char in url)
+
+	url = re.sub(r"\s+", " ", url)
+
+	return url
 
 
 def preprocess(text: str) -> List[str]:

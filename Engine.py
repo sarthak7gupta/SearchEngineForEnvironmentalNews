@@ -7,7 +7,7 @@ from symspellpy import SymSpell
 from config import min_scores, num_champs, term_idf_thresh
 from inverted_index import InvertedIndex
 from mappings import Doc_DocID_Mapping, File_FileID_Mapping
-from preprocessing import preprocess
+from preprocessing import preprocess, clean_url
 from utils import doc_id_type, rank_scores_threshold, read_file
 
 
@@ -25,12 +25,9 @@ class Engine:
 			for row_number, row in enumerate(read_file(filename)):
 				doc = preprocess(row["Snippet"]).split()
 				doc += preprocess(row["Show"]).split()
-				sp = row["IAShowID"].split('_')
-				sp = sp[3:len(sp)]
-				s = ""
-				for i in sp:
-					s = s + i + " "
-				doc += preprocess(s).split()
+				doc += preprocess(" ".join(row["IAShowID"].split("_")[3:])).split()
+				doc += preprocess(clean_url(row["URL"])).split()
+				doc += preprocess(clean_url(row["IAPreviewThumb"])).split()
 				metadata = row
 				file_id = self.fileid_mapping.get_file_id(filename)
 				doc_id = f"{file_id}_{row_number}"
@@ -80,7 +77,7 @@ class Engine:
 		self,
 		query_terms: set,
 		term_idf_thresh: float = term_idf_thresh,
-		min_scores: int = min_scores
+		min_scores: int = min_scores,
 	) -> Set[doc_id_type]:
 		top_docs = set()
 
@@ -93,7 +90,9 @@ class Engine:
 		return top_docs
 
 	def load_symspell(self) -> None:
-		freq_dict = {term: self.inverted_index.get_term_count(term) for term in self.all_terms}
+		freq_dict = {
+			term: self.inverted_index.get_term_count(term) for term in self.all_terms
+		}
 
 		with open("freq.dict", "w") as f:
 			for term, freq in freq_dict.items():
