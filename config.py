@@ -1,7 +1,7 @@
 data_dir = "TelevisionNews"
 pickle_filename = "Engine.pickle"
 
-min_results = 10
+min_results = 20
 min_scores = 10
 num_champs = 10
 score_diff_thresh = 0.09
