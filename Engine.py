@@ -45,7 +45,7 @@ class Engine:
 		self.load_symspell()
 
 	def ranked_retrieval(self, query: List[str]) -> List[doc_id_type]:
-		if not any(term in self.all_terms for term in query):
+		if all(term not in self.all_terms for term in query):
 			return []
 
 		scores = defaultdict(float)
