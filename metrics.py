@@ -14,10 +14,7 @@ from engine_utils import build_engine, load_engine_from_pickle
 
 
 def genTemplate(columns):
-	t = {}
-	for field in columns:
-		t[field] = None
-	return t
+	return {field: None for field in columns}
 
 
 class Metrics:
@@ -30,8 +27,7 @@ class Metrics:
 		self.engine = load_engine_from_pickle()
 
 	def commonDocs(self, docsSet1, docsSet2):
-		common = [value for value in docsSet1 if value in docsSet2]
-		return common
+		return [value for value in docsSet1 if value in docsSet2]
 
 	def getQueriesFile(self, filename):
 		with open(filename) as f:
@@ -42,7 +38,7 @@ class Metrics:
 	def formatResultElastic(self, elasticDocs, cols):
 		formatted = []
 		template = genTemplate(cols)
-		for i in range(0, len(elasticDocs)):
+		for i in range(len(elasticDocs)):
 			rowt = copy.deepcopy(template)
 			for j in cols:
 				rowt[j] = elasticDocs[i]["_source"][j]
@@ -52,7 +48,7 @@ class Metrics:
 	def formatResult(self, elasticDocs, cols):
 		formatted = []
 		template = genTemplate(cols)
-		for i in range(0, len(elasticDocs)):
+		for i in range(len(elasticDocs)):
 			rowt = copy.deepcopy(template)
 			for j in cols:
 				rowt[j] = elasticDocs[i][j]
@@ -62,11 +58,9 @@ class Metrics:
 	def getElasticSearchResults(self, query):
 		request = {"query": {"query_string": {"query": query}},"from" : 0, "size" : 20}
 		elastic_results = requests.post(self.url, json=request)
-		# numElasticDocuments = len(elastic_results.json()["hits"]["hits"])
-		formattedElastic = self.formatResultElastic(
+		return self.formatResultElastic(
 			elastic_results.json()["hits"]["hits"], self.cols
 		)
-		return formattedElastic
 
 	def elasticSearchTime(self, query):
 		request = {"query": {"query_string": {"query": query}},"from" : 0, "size" : 20}
@@ -108,16 +102,16 @@ class Metrics:
 		return round(f1_value, 4)
 
 	def p_at_k(self, query, docs, k):
-		top_k_docs = docs[0:k]
+		top_k_docs = docs[:k]
 		top_k_docs = self.formatResult(top_k_docs, self.cols)
 		elasticResults = self.getElasticSearchResults(query)
-		top_k_elastic = elasticResults[0:k]
+		top_k_elastic = elasticResults[:k]
 		numRelevantItemsRetreived = len(self.commonDocs(top_k_docs, top_k_elastic))
 		k_prec_value = numRelevantItemsRetreived / k
 		return round(k_prec_value, 4)
 
 	def r_at_k(self, query, docs, k):
-		top_k_docs = docs[0:k]
+		top_k_docs = docs[:k]
 		top_k_docs = self.formatResult(top_k_docs, self.cols)
 		elasticResults = self.getElasticSearchResults(query)
 		top_k_elastic = elasticResults
@@ -130,9 +124,9 @@ class Metrics:
 		recalls = []
 		elasticResults = self.getElasticSearchResults(query)
 		for i in range(1, k + 1):
-			top_k_docs = docs[0:i]
+			top_k_docs = docs[:i]
 			top_k_docs = self.formatResult(top_k_docs, self.cols)
-			top_k_elastic = elasticResults[0:i]
+			top_k_elastic = elasticResults[:i]
 			numRelevantItemsRetreived = len(self.commonDocs(top_k_docs, top_k_elastic))
 			k_prec_value = numRelevantItemsRetreived / i
 			precisions.append(k_prec_value)
@@ -151,29 +145,26 @@ class Metrics:
 		elasticResultsSet = [
 			self.getElasticSearchResults(query) for query in queriesSet
 		]
-		for i in range(0, len(docsSet)):
+		for i in range(len(docsSet)):
 			docsSet[i] = self.formatResult(docsSet[i], self.cols)
 		queryAverages = []
-		for i in range(0, len(queriesSet)):
+		for i in range(len(queriesSet)):
 			queryPrecisions = []
-			for j in range(0, k):
+			for j in range(k):
 				if docsSet[i][j] in elasticResultsSet[i]:
-					top_k_docs = docsSet[i][0:j + 1]
-					top_k_elastic = elasticResultsSet[i][0:j + 1]
+					top_k_docs = docsSet[i][:j + 1]
+					top_k_elastic = elasticResultsSet[i][:j + 1]
 					numRelevantItemsRetreived = len(
 						self.commonDocs(top_k_docs, top_k_elastic)
 					)
 					k_prec_value = numRelevantItemsRetreived / (j + 1)
 					queryPrecisions.append(k_prec_value)
 			avg_precision = 0.0
-			if len(queryPrecisions) != 0:
+			if queryPrecisions:
 				avg_precision = sum(queryPrecisions) / len(queryPrecisions)
 				queryAverages.append(avg_precision)
 			print("Query:", queriesSet[i], " Average Precision: ", avg_precision)
-		if len(queryAverages) != 0:
-			map_val = sum(queryAverages) / len(queryAverages)
-			return map_val
-		return 0.0
+		return sum(queryAverages) / len(queryAverages) if queryAverages else 0.0
 
 	"""
 	Return queries per second in milliseconds(for elastic search)
@@ -187,8 +178,7 @@ class Metrics:
 			elastic_results = requests.post(self.url, json=request)
 			time_taken += elastic_results.json()["took"]
 			# print(time_taken)
-		qps_val = time_taken / num_queries
-		return qps_val
+		return time_taken / num_queries
 
 	"""
 	Return queries per second in milliseconds(for our IR system)
@@ -199,8 +189,7 @@ class Metrics:
 		num_queries = len(queriesSet)
 		for query in queriesSet:
 			self.searchTime(query)
-		qps_val = time_taken / num_queries
-		return qps_val
+		return time_taken / num_queries
 
 
 if __name__ == "__main__":
@@ -243,6 +232,29 @@ if __name__ == "__main__":
 			print("Query given: ", query)
 			print("Precision: ", prec)
 			print("---------------------------")
+		elif metric == 10:
+			print(
+				"[MESSAGE]This metric requires a text file containing multiple queries"
+			)
+			file_name = session.prompt(">> Enter filename(with .txt): ")
+			queryList = mymetrics.getQueriesFile(file_name)
+			qps = mymetrics.qps_elastic(queryList)
+			print("Number of queries given: ", len(queryList))
+			print("Queries Per Second for ElasticSearch: ", qps)
+		elif metric == 11:
+			print(
+				"[MESSAGE]This metric requires a text file containing multiple queries"
+			)
+			file_name = session.prompt(">> Enter filename(with .txt): ")
+			queryList = mymetrics.getQueriesFile(file_name)
+			qps = mymetrics.qps_index(queryList)
+			print("Number of queries given: ", len(queryList))
+			print("Queries Per Millisecond for Index: ", max(qps, len(queryList)))
+		elif metric == 12:
+			results = mymetrics.getElasticSearchResults(session.prompt(">> Enter Query: "))
+			print()
+			[pprint(result) for result in results]
+			print()
 		elif metric == 2:
 			query = session.prompt(">> Enter Query: ")
 			#print(mymetrics.engine.query(query))
@@ -261,13 +273,9 @@ if __name__ == "__main__":
 		elif metric == 4:
 			print("[MESSAGE]This metric requires multiple queries")
 			num_queries = int(session.prompt(">> Enter number of queries: "))
-			queryList = []
-			for i in range(0, num_queries):
-				queryList.append(session.prompt(">> Query: "))
+			queryList = [session.prompt(">> Query: ") for _ in range(num_queries)]
 			k = int(session.prompt(">> Enter value of K(Ranks) for MAP: "))
-			docList = []
-			for query in queryList:
-				docList.append(mymetrics.engine.query(query))
+			docList = [mymetrics.engine.query(query) for query in queryList]
 			# print(docList)
 			map = mymetrics.MAP(queryList, docList, k)
 			print("---------------------------")
@@ -303,26 +311,3 @@ if __name__ == "__main__":
 			latency = mymetrics.searchTime(query)
 			print("Query: ", query)
 			print("Search Engine took: ", latency, "ms")
-		elif metric == 10:
-			print(
-				"[MESSAGE]This metric requires a text file containing multiple queries"
-			)
-			file_name = session.prompt(">> Enter filename(with .txt): ")
-			queryList = mymetrics.getQueriesFile(file_name)
-			qps = mymetrics.qps_elastic(queryList)
-			print("Number of queries given: ", len(queryList))
-			print("Queries Per Second for ElasticSearch: ", qps)
-		elif metric == 11:
-			print(
-				"[MESSAGE]This metric requires a text file containing multiple queries"
-			)
-			file_name = session.prompt(">> Enter filename(with .txt): ")
-			queryList = mymetrics.getQueriesFile(file_name)
-			qps = mymetrics.qps_index(queryList)
-			print("Number of queries given: ", len(queryList))
-			print("Queries Per Millisecond for Index: ", max(qps, len(queryList)))
-		elif metric == 12:
-			results = mymetrics.getElasticSearchResults(session.prompt(">> Enter Query: "))
-			print()
-			[pprint(result) for result in results]
-			print()
